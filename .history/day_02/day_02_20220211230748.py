@@ -8,11 +8,16 @@ def pos(value) :
     global depth
     position += value
     depth += aim * value
-def depth_move(value) :  
-    global aim 
-    aim += value;
-    if aim < 0:
-      aim = 0; 
+def depth_move(value) : 
+    global depth
+    global aim
+    if value < 0:
+      aim -= value;
+    else:
+      aim += value;
+    depth += value  ; 
+    if depth < 0:
+      depth = 0;
     
 for x in f:
   [action,value] = x.replace('\n','').split(" "); 
