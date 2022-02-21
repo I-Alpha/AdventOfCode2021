@@ -20,30 +20,35 @@ def part1():
     print("\n\n\n" +str(gamma),epsilon);
     print(str(gamma*epsilon)+"\n\n\n");
 
-##part 2 
-    lifeSupportRating = 0;
-    oxygenGeneratorRating = 0;
-    CO2ScrubberRating = 0;
-def part2Oxy(binaryNumbers,indx): 
+##part 2  
+def OxygenRating(binaryNumbers,indx): 
     if len(binaryNumbers) == 1:
         return binaryNumbers[0];  
     count=[0, 0]
     for binNum in binaryNumbers:
         count[int(binNum[indx])] +=1;
-    binTarget=str(count.index(max(count)));
+    if (count[0]==count[1]):
+        binTarget = '1';
+    else:
+        binTarget=str(count.index(max(count)));
     filteredArray =  [binNum for binNum in binaryNumbers if binNum[indx] == binTarget] ; 
-    return part2Oxy(filteredArray,indx+1)
-part1();
-oxygenGeneratorRating = int(part2Oxy(binaryNumbers,1),2);
+    return OxygenRating(filteredArray,indx+1);
 
-def part2CO2(binaryNumbers,indx): 
+
+def C02Rating(binaryNumbers,indx): 
     if len(binaryNumbers) == 1:
         return binaryNumbers[0];  
     count=[0, 0]
     for binNum in binaryNumbers:
-        count[int(binNum[indx])] +=1;
-    binTarget=str(count.index(min(count)));
+        count[int(binNum[indx])] +=1; 
+    if (count[0]==count[1]):
+        binTarget = '0';
+    else:
+        binTarget=str(count.index(min(count)));
     filteredArray =  [binNum for binNum in binaryNumbers if binNum[indx] == binTarget] ; 
-    return part2CO2(filteredArray,indx+1)
-part1();
-print(oxygenGeneratorRating)
+    return C02Rating(filteredArray,indx+1);
+
+oxygenGeneratorRating = int(OxygenRating(binaryNumbers,0),2);
+C02GeneratorRating = int(C02Rating(binaryNumbers,0),2); 
+
+print("C02GeneratorRating:", C02GeneratorRating, " oxygenGeneratorRating:", oxygenGeneratorRating, ", answer:" ,C02GeneratorRating*oxygenGeneratorRating)
