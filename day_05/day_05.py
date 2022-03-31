@@ -76,19 +76,20 @@ def updateVentMap(line, partTwo = False ):
 print("\n")
  
 
-def getOverlappingVents(partTwo = False):
+def getOverlappingVents(partTwo = False, verbose = False, withMap = False, large=False):
     for v, i in enumerate(lines):
-        print(f"\nline {v+1} : ({i.start.x},{i.start.y}) -> ({i.end.x},{i.end.y})")
+        if verbose:
+            print(f"\nline {v+1} : ({i.start.x},{i.start.y}) -> ({i.end.x},{i.end.y})")
+        if withMap:
+            printVentMap(vent_map,large)
         updateVentMap(i, partTwo)
     results = [i for i in vent_map if vent_map[i] > 1]
    
     return results
 
-results1 = getOverlappingVents()
+
+print(f"Overlapping lines p1 : {len(getOverlappingVents())}\n")
+
 vent_map = {}
-results2 = getOverlappingVents(True)
-
-print(f"\nOverlapping lines p1 : {len(results1)}\n")
-
-print(f"\nOverlapping lines p2 : {len(results2)}\n")
+print(f"Overlapping lines p2 : {len(getOverlappingVents(True))}\n")
 # print("\n",data,"\n\n", mask,"\n")
