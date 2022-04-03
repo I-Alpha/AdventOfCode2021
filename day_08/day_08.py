@@ -10,7 +10,8 @@ def getTotalUniqueDigits(data):
     totalNum = 0
     for currLine in data.readlines():
         numArr = [0]*10
-        signals, output = map(lambda x: x.split(' '), currLine.split(' | '))
+        signals, output = list(map(lambda x: x.split(
+                ' '), currLine.replace('\n', '').split(' | ')))
         signals = [list(i) for i in signals]
         output = [list(i) for i in output]
         if output[-1][-1] == '\n':
