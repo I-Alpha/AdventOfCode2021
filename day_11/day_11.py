@@ -1,7 +1,11 @@
-from argon2 import Type
+from copy import copy, deepcopy
+from itertools import count, product
+from collections import deque
+import queue
 import numpy as np
 
 ma = np.ma
+
 
 class Cell():
     def __init__(self, value: int, x = None, y = None, flashed=False,):
@@ -11,122 +15,103 @@ class Cell():
         self.y = y
 
 class Grid():
-    def __init__(self, cell_grid=False): 
-        self.grid_shape=np.shape(cell_grid)
-        self.cell_grid=[]
-        self.flash_queue=[] 
+    def __init__(self, cell_grid):  
+        self.cell_grid=deepcopy(cell_grid)
         self.flash_total=0
+        self.flash_queue=[]
+        self.flash_per_step=[]
         self.stepFlashNums=[]
-        self.synchroniousFlashStep=False
-        self.get_cell_grid(cell_grid)
-
+        self.synced_at_step=False 
+        self.synced=False 
+    
+    def increaseCellValuesBy(self, amount):
+        for cell in self.cell_grid.flatten() :
+            cell.value+=1
+      
+    def getNumberGrid(self):
+       return np.array([[ y.value for y in x] for x in self.cell_grid] )
+   
+    def resetFlashed(self):
+        for cell in self.cell_grid.flatten():
+            cell.flashed=False
+        self.flash_per_step.append(0)
         
-    def get_cell_grid(self,cell_grid):
-        self.cell_grid= cell_grid 
-
-    def get_grid_dict(self):
-        grid_dict=[]
-        for i in range(self.grid_shape[0]):
-            for x in range(self.grid_shape[1]):
-                  self.cell_grid[i][x].x,self.cell_grid[i][x].y=i,x 
-                  grid_dict.append((i,x))
-        return grid_dict
-    
-    def get_vals(self):
-        vmap = []
-        for i in range(self.grid_shape[0]):
-            vmap.append([])
-            for cell in self.cell_grid[i]:
-                vmap[i].append(cell.value)
-        return np.array(vmap)
-
-    def increase_energy_by(self,num=1):
-        for row in self.cell_grid:
-            for cell in row: 
-                if not cell.flashed:
-                    cell.value+=num
-                
-    def get_mask(self):
-        rowmask=np.array([False for i in range(self.grid_shape[0])])
-        return np.stack([rowmask for i in range(self.grid_shape[1])],-1) 
-    
-    def check_flashes(self):
-        for row in self.cell_grid:
-            for cell in row:
-                if cell.value>9:
-                    cell.value=0
-                    if not cell.flashed:
-                        self.flash_queue.append(cell)
-                        cell.flashed=True
-                        self.flash_total+=1
-                        self.flash_per_step+=1 
-                        
-    def reset_flashed(self):
-        for row in self.cell_grid:
-            for cell in row:
-                cell.flashed=False 
-                
-    def get_adjacent_indices(self, x_coord, y_coord): 
-        result=[]
-        for x,y in [(x_coord+i,y_coord+j) for i in (-1,0,1) for j in (-1,0,1) if i != 0 or j != 0]:
-            if (x,y) in self.get_grid_dict():
-                result.append((x,y))
-        return result
-    
-def step(main_grid: Grid):
-    main_grid.flash_per_step=0   
-    main_grid.increase_energy_by(1)                
-    main_grid.check_flashes()
-    while len(main_grid.flash_queue) > 0:
-            cell=main_grid.flash_queue.pop(0)
-            neighbhours=main_grid.get_adjacent_indices(cell.x,cell.y)
-            for neighbour in neighbhours:      
-                neighbourCell=main_grid.cell_grid[neighbour[0]][neighbour[1]]
-                if not neighbourCell.flashed:
-                    neighbourCell.value+=1
-                    main_grid.check_flashes()   
-    main_grid.stepFlashNums.append(main_grid.flash_per_step)
-    main_grid.reset_flashed()
-    step(main_grid.flash_queue)
-
-def run_step(verbose, grid, x):
-    step(grid) 
-    if grid.stepFlashNums[x] == grid.grid_shape[0]*grid.grid_shape[1] and not grid.synchroniousFlashStep:
-        grid.synchroniousFlashStep=x
-    if verbose:
-        print(f"\nAfter step {x+1}:\n{(grid.get_vals())}\nFlash count: {grid.stepFlashNums[x]}")
         
-def run_steps(total_steps=False, verbose=False): 
-    grid = Grid(data) 
+    def printGrid(self):
+        print(self.getNumberGrid())
+        
+    def flashCell(self, cell): 
+       cell.value = 0 
+       self.flash_total+=1
+       cell.flashed = True
+       adjecentCells = list(self.get_adjacent_cells(cell.x,cell.y))
+       for x,y in adjecentCells:
+            ncell = self.cell_grid[x,y]  
+            if ncell.flashed:
+               ncell.value = 0
+            elif ncell.value < 9:
+               ncell.value+=1   
+            else:
+                self.flashCell(ncell)
+                
+    def get_adjacent_cells(self, x_coords, y_coords):
+        cell =  x_coords, y_coords
+        _,size = self.cell_grid.shape
+        for c in product(*(range(n-1, n+2) for n in (cell))):
+            if c != cell and all(0 <= n < size for n in c):
+                yield c 
+
+    def checkFlashed(self,mode):
+        flashed=False
+        
+        for i in self.cell_grid.flatten():
+            if i.value > 9:
+                self.flash_queue.append(i)
+                flashed=True
+        return flashed
+    
+def run_step(grid, step,verbose, mode="default"):     
     if verbose:
-        print(f"\nBefore any steps:\n{(grid.get_vals())}")
-    if total_steps:
-        for x in range(total_steps):
-            run_step(verbose, grid, x) 
-            if verbose:
-                print(f"\nCurrent Flashes Recorded: {grid.stepFlashNums}")
+        print("\n\nBefore step -",step+1,"\n ")
+        grid.printGrid()
+    grid.resetFlashed()
+    grid.increaseCellValuesBy(1)  
+    if verbose:
+        print("\nIncreaseCellValuesBy 1 step -",step+1,"\n ") 
+        grid.printGrid()    
+    while grid.checkFlashed(mode): 
+        cell = grid.flash_queue.pop()
+        grid.flashCell(cell) 
+        grid.flash_per_step[step]+=1
+        if verbose:
+            print("\n\nFlashed step",step+1," Cell (" ,cell.x,", ",cell.y,") -\n" ) 
+            grid.printGrid() 
+        if mode =="sync":
+            grid.synced =all(elem == 0 for elem in grid.getNumberGrid().flatten())
+            
+    return grid
+
+
+def run_steps(grid,steps="sync",verbose=False):
+    if steps == "sync":
+        step = 0 
+        while not grid.synced:
+            run_step(grid,step,verbose,"sync")
+            step+=1
+        grid.synced_at_step=step
     else: 
-        x=0
-        while not grid.synchroniousFlashStep:
-            run_step(verbose, grid, x) 
-            x+=1
-            if verbose:
-                print(f"\nCurrent Flashes Recorded: {grid.stepFlashNums}")
-    
-    return [sum(grid.stepFlashNums),grid]
+        for i in range(steps):
+            run_step(grid,i,verbose)
+    return grid
 
-data = np.array(
-    list(map(lambda x: np.array(list(map(lambda y: Cell(int(y)), x))), 
-            [list(i) for i in open('day_11/input.txt', 'r').read().splitlines()]
-    )))
+cell_grid = np.array([[Cell(int(valy),ix,iy) for iy,valy in enumerate(valx)] for ix,valx in enumerate(open('day_11/input.txt', 'r').read().splitlines())]) 
+ 
+grid = Grid(cell_grid)
+grid = run_steps(grid,100) 
+print(f"\nPart 1 Results Total Flashes: {grid.flash_total}\n")
 
-for row in range(len(data)):
-    for cell in range(len(data[row])):
-        data[row][cell].x = row
-        data[row][cell].y = cell
-        
-total_flashes,grid_100_steps=run_steps(100)
-print(f"\nPart 1 Results Total Flashes: {total_flashes}\n")
+Part2grid = Grid(cell_grid)
+part2grid = run_steps(Part2grid,"sync") 
+print(f"\nPart 2 Results  Synced at Step: {part2grid.synced_at_step}\n")
 
-total_flashes_synced,grid_synced=run_steps()
-print(f"Part2 First Synchronius flashing at step: {total_flashes_synced, grid_synced.synchroniousFlashStep}\n")
+pass
