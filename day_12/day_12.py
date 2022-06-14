@@ -1,64 +1,65 @@
-import numpy as np
+from collections import deque
+from copy import deepcopy 
 
 
-class Path():
-     def __init__(self,start,end):
-         self.label = start + "->" + end
-         self.start=start
-         self.end=end
-         self.traversedCount = 0
-         self.isSmallCave =  end == end.lower()
-    
-allPaths =np.array([[Path(start,end) for start,end in [lines.split("-")]] for lines in open('day_12/input.txt', 'r').read().splitlines()]).flatten()
+allLinks ={}     
 
-def printPaths(pathsArr):
-    for paths in pathsArr: 
-        for path in paths:
-            print(path.label, end =", ") 
+def isSmallCave (node):
+    return node.lower() == node
+
+def addLink (a, b): 
+    if a in allLinks:
+        allLinks[a].append(b) 
+    else:
+        allLinks[a]=[b]
+        
+_= [[[addLink(start,end) ,addLink(end,start)]  for start,end in [lines.split("-")]] for lines in open('day_12/input.txt', 'r').read().splitlines()]
             
-def getAvailablePaths(paths, path):
-    return list(filter(lambda x : x.start == path.end, paths))
- 
-
-def traverse(paths):
-    startPaths = list(filter(lambda x : x.start == "start",paths))
-    discoveredPaths=[]
-    count =  0  
-    for start in startPaths:
-        pathsForStart = [] 
-        count2 =  0  
-        queue=[start] 
-        prevPath= start
-        for path in paths:
-            path.traversedCount  = 0 
-        start.traversedCount +=1    
-        pathsForStart.append([])
-        discoveredPaths.append([])
-        while len(queue) > 0:          
-            currentPath =(queue.pop())
-            print("\ncurrentPath:",currentPath.label)
-            if currentPath.end ==  "end":
-                allSmallCavesTraversed= all( x.traversedCount > 0 for x in list(filter(lambda x : x.isSmallCave, paths)))
-                if not allSmallCavesTraversed:
-                    continue
-                else : 
-                    pathsForStart[count].append(currentPath)  
-                    currentPath.traversedCount +=1 
-                    break
-            else:
-                 pathsForStart[count2].append(currentPath) 
-                 currentPath.traversedCount +=1 
-            for i in getAvailablePaths(paths, currentPath):
-                if i not in queue and i != currentPath:
-                    queue.append(i)
-                currentPath.traversedCount +=1
-            printPaths(pathsForStart) 
-                
-        discoveredPaths[count].append(pathsForStart)
-        count +=1
-        print("\n")
+def part1(): 
     
-    return discoveredPaths
+    def getPath(allLinks, visited, node):
+            if (node == "end") :
+                return 1
+            discoveredPaths=0
+            for linkedNode in allLinks[node]:
+                if linkedNode not in visited:
+                    if isSmallCave(linkedNode):
+                        newVisited= visited + [linkedNode] 
+                    else:
+                        newVisited=visited
+                    discoveredPaths  += getPath(allLinks, newVisited, linkedNode)
+            return discoveredPaths
+    return  getPath(allLinks, ["start"], "start")
 
-print("\n")
-printPaths( traverse(allPaths))
+def part2():  
+    
+    def getPath(allLinks, visited, node):
+        
+            def hasVisitedNode(visited, node):
+                if (node == "start") :
+                    return True
+                return  (node in visited) and ("twice" in visited)
+
+            def getVisitedNodes (visited, node):
+                isSmallNode = isSmallCave(node)
+                if not isSmallNode:
+                    return visited
+                if node in visited:
+                    return visited + ["twice"]
+                return  visited+ [node] 
+            
+            if  node == "end":
+                return 1
+            discoveredPaths=0
+            for linkedNode in allLinks[node]:
+                if not hasVisitedNode(visited, linkedNode): 
+                    discoveredPaths  += getPath(allLinks, getVisitedNodes(visited, linkedNode), linkedNode)
+            return discoveredPaths
+
+    return getPath(allLinks, ["start"], "start")
+ 
+    
+paths1 = part1()
+paths2 = part2()
+print("\nPart 1", paths1)
+print("\nPart 2", paths2)
